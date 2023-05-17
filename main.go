@@ -31,14 +31,21 @@ type Advertiser struct {
 	Advertiser string `json:"nickName"`
 }
 
-func main() {
-	// getting parameters for request
-	cfg, err := config.NewConfig()
+var params config.Parameters
+
+func init() {
+	err := params.ReqParams()
 	if err != nil {
 		log.Panicf("main - new request error: %s\n", err)
 	}
+}
 
-	data := cfg.Parameters
+func main() {
+	// getting parameters for request
+
+	log.Println(params)
+
+	data := params
 
 	payloadBuf := new(bytes.Buffer)
 	json.NewEncoder(payloadBuf).Encode(data)
