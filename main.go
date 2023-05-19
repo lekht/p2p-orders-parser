@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"p2p-orders-parser/config"
+	"time"
 )
 
 type Response struct {
@@ -40,24 +41,62 @@ func init() {
 	}
 }
 
+type RequestParameters struct {
+	Asset          string   `json:"asset"`
+	Countries      []string `json:"countries"`
+	Fiat           string   `json:"fiat"`
+	Page           int      `json:"page"`
+	PayTypes       []string `json:"payTypes"`
+	ProMerchantAds bool     `json:"proMerchantAds"`
+	PublisherType  []string `json:"publisherType"`
+	Rows           int      `json:"rows"`
+	TradeType      string   `json:""`
+}
+
+var tradeOperation []string = []string{"buy", "sell"}
+
 func main() {
 	// getting parameters for request
 
 	log.Println(params)
+	var rp RequestParameters
 
-	data := params
+	rp.Countries = nil
+	rp.Page = 1
+	rp.PayTypes = nil
+	rp.ProMerchantAds = false
+	rp.PublisherType = nil
+	rp.Rows = 10
 
-	payloadBuf := new(bytes.Buffer)
-	json.NewEncoder(payloadBuf).Encode(data)
+	for _, asset := range params.Asset {
+		rp.Asset = asset
+		fmt.Println("==================================")
+		fmt.Println(asset)
+		fmt.Println("==================================")
+		for _, fiat := range params.Fiat {
+			rp.Fiat = fiat
+			fmt.Println("--------------------------")
+			fmt.Println(fiat)
+			fmt.Println("--------------------------")
+			for _, operation := range tradeOperation {
+				rp.TradeType = operation
 
-	req, err := http.NewRequest(http.MethodPost, "https://p2p.binance.com/bapi/c2c/v2/friendly/c2c/adv/search", payloadBuf)
-	if err != nil {
-		log.Panicf("main - new request error: %s\n", err)
+				fmt.Print(operation+"\n", DoRequest(&rp), "\n")
+			}
+		}
 	}
-	req.Header.Set("Content-Type", "application/json")
+}
+
+func DoRequest(r *RequestParameters) Response {
+	payloadBuf := new(bytes.Buffer)
+	json.NewEncoder(payloadBuf).Encode(r)
+
+	c := http.Client{
+		Timeout: time.Second * 10,
+	}
 
 	// request to binance
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := c.Post("https://p2p.binance.com/bapi/c2c/v2/friendly/c2c/adv/search", "application/json", payloadBuf)
 	if err != nil {
 		log.Panicf("main - client: making http request error: %s\n", err)
 	}
@@ -69,5 +108,6 @@ func main() {
 	if err != nil {
 		log.Panic(err)
 	}
-	fmt.Println(response)
+
+	return response
 }
