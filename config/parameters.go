@@ -11,9 +11,9 @@ type Parameters struct {
 	Fiat  []string `yaml:"fiat"`
 }
 
-func (p *Parameters) ReqParams() error {
+func (p *Parameters) ReqParams(path string) error {
 
-	viper.AddConfigPath("./config/")
+	viper.AddConfigPath(path)
 	viper.SetConfigName("parameters")
 	viper.SetConfigType("yml")
 

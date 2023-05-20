@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"log"
 	"net/http"
@@ -35,9 +36,17 @@ type Advertiser struct {
 var params config.Parameters
 
 func init() {
-	err := params.ReqParams()
-	if err != nil {
-		log.Panicf("main - new request error: %s\n", err)
+	parametersPath := flag.String("parameters", "", "path to config file")
+	flag.Parse()
+
+	if *parametersPath != "" {
+		err := params.ReqParams(*parametersPath)
+		if err != nil {
+			log.Panicf("main - new request error: %s\n", err)
+		}
+	} else {
+		log.Println("there are no parameters' path")
+		log.Panicf("you should use the flag ---> --parameters=")
 	}
 }
 
