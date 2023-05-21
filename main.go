@@ -2,7 +2,9 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -12,10 +14,10 @@ import (
 )
 
 type Response struct {
-	Objects []Object `json:"data"`
+	Objects []Data `json:"data"`
 }
 
-type Object struct {
+type Data struct {
 	Adv        Adv        `json:"adv"`
 	Advertiser Advertiser `json:"advertiser"`
 }
@@ -33,21 +35,21 @@ type Advertiser struct {
 	Advertiser string `json:"nickName"`
 }
 
-var params config.Parameters
+var params config.Conf
 
 func init() {
-	parametersPath := flag.String("parameters", "", "path to config file")
-	flag.Parse()
-
-	if *parametersPath != "" {
-		err := params.ReqParams(*parametersPath)
-		if err != nil {
-			log.Panicf("main - new request error: %s\n", err)
-		}
-	} else {
-		log.Println("there are no parameters' path")
-		log.Panicf("you should use the flag ---> --parameters=")
-	}
+	//parametersPath := flag.String("c", "conf.yml", "path to config file")
+	//flag.Parse()
+	//
+	//if *parametersPath != "" {
+	//	err := params.ReqParams(*parametersPath)
+	//	if err != nil {
+	//		log.Panicf("main - new request error: %s\n", err)
+	//	}
+	//} else {
+	//	log.Println("there are no parameters' path")
+	//	log.Panicf("you should use the flag ---> --parameters=")
+	//}
 }
 
 type RequestParameters struct {
@@ -67,6 +69,19 @@ var tradeOperation []string = []string{"buy", "sell"}
 func main() {
 	// getting parameters for request
 
+	parametersPath := flag.String("c", "conf.yml", "path to config file")
+	flag.Parse()
+
+	if *parametersPath != "" {
+		err := params.ReqParams(*parametersPath)
+		if err != nil {
+			log.Panicf("main - new request error: %s\n", err)
+		}
+	} else {
+		log.Println("there are no parameters' path")
+		log.Panicf("you should use the flag ---> --parameters=")
+	}
+
 	log.Println(params)
 	var rp RequestParameters
 
@@ -76,6 +91,8 @@ func main() {
 	rp.ProMerchantAds = false
 	rp.PublisherType = nil
 	rp.Rows = 10
+
+	//ch := make(chan OrderBook)
 
 	for _, asset := range params.Asset {
 		rp.Asset = asset
@@ -94,7 +111,13 @@ func main() {
 			}
 		}
 	}
+
+	//for b := range ch {
+	//	update map[string]map[string]OrderBook
+	//}
 }
+
+// todo create constructors for all services
 
 func DoRequest(r *RequestParameters) Response {
 	payloadBuf := new(bytes.Buffer)
@@ -120,3 +143,90 @@ func DoRequest(r *RequestParameters) Response {
 
 	return response
 }
+
+type OrderBook struct {
+	Buy  []Order
+	Sell []Order
+}
+
+type Order struct {
+	Asset         string
+	Fiat          string
+	Price         float64
+	Advertiser    string
+	PaymentMethod string
+}
+
+type P2P interface {
+	GetOrderBooks(ctx context.Context, assets, fiats []string) (map[string]map[string]OrderBook, error) // fiat->asset->[]Order
+}
+
+type P2PBinance struct {
+	client MyHttpClient
+}
+
+func NewP2PBinance(client MyHttpClient) *P2PBinance {
+	return &P2PBinance{client: client}
+}
+
+type MyHttpClient struct {
+	attempts int
+	http.Client
+}
+
+func (c MyHttpClient) Do(r *http.Request) (*http.Response, error) {
+	for i := 0; i <= c.attempts; i++ {
+		return c.Client.Do(r) // todo check resp code and errors
+	}
+	return nil, errors.New("all atemptes failed")
+}
+
+func (p P2PBinance) GetOrderBooks(ctx context.Context, assets, fiats []string) (map[string]map[string]OrderBook, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+type FiatPairOrderProfit struct {
+	orders []FiatPairOrder // [buy:rub-usdt sell:rub-usdt] or [buy:rub-usdt sell:kzt-usdt] [buy:kzt-btc sell:rub-btc]
+}
+
+func (p FiatPairOrderProfit) Profit() float64 {
+	//TODO implement me
+	panic("implement me")
+	for _, o := range p.orders {
+		_ = o
+		// todo calculate profit
+	}
+	return 0
+}
+
+func (p FiatPairOrderProfit) Fiats() (fiat1, fiat2 string) {
+	//TODO implement me
+	panic("implement me")
+	return "", ""
+}
+
+type FiatPairOrder struct {
+	Buy  Order
+	Sell Order
+}
+
+type PriceMatcher interface {
+	GetFiatOrders(map[string]map[string]OrderBook) []FiatPairOrder
+	GetProfitMatches([]FiatPairOrder) []FiatPairOrderProfit
+}
+
+type PriceMatcherSimple struct{}
+
+func (PriceMatcherSimple) GetFiatOrders(m map[string]map[string]OrderBook) []FiatPairOrder {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (PriceMatcherSimple) GetProfitMatches(orders []FiatPairOrder) []FiatPairOrderProfit {
+	//TODO implement me
+	panic("implement me")
+}
+
+//rub-usdt-kzt 5 buy  5000kzt -> 1000 rub
+//rub-btc-kzt 6 sell  1000rub -> 6000 kzt

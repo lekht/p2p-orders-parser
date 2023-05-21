@@ -6,15 +6,15 @@ import (
 	"github.com/spf13/viper"
 )
 
-type Parameters struct {
+type Conf struct {
 	Asset []string `yaml:"asset"`
 	Fiat  []string `yaml:"fiat"`
 }
 
-func (p *Parameters) ReqParams(path string) error {
+func (p *Conf) ReqParams(path string) error {
 
-	viper.AddConfigPath(path)
-	viper.SetConfigName("parameters")
+	viper.AddConfigPath("./")
+	viper.SetConfigName("conf")
 	viper.SetConfigType("yml")
 
 	err := viper.ReadInConfig()
