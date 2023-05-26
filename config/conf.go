@@ -13,7 +13,7 @@ type Conf struct {
 
 func (p *Conf) ReqParams(path string) error {
 
-	viper.AddConfigPath("./")
+	viper.AddConfigPath("./config/")
 	viper.SetConfigName("conf")
 	viper.SetConfigType("yml")
 
