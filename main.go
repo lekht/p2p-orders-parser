@@ -52,6 +52,8 @@ func main() {
 	fmt.Print("buy ", "\n", book["RUB"]["BTC"].Buy, "\n\n")
 	fmt.Print("sell ", "\n", book["KZT"]["BTC"].Sell, "\n\n")
 
+	// m := matcher.NewMatcher()
+
 }
 
 // todo create constructors for all services
