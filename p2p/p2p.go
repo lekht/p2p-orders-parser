@@ -49,11 +49,8 @@ func (p *P2PBinance) GetOrderBooks(ctx context.Context, fiats, assets []string) 
 		rp.Asset = asset
 		for _, fiat := range fiats {
 			rp.Fiat = fiat
-			for _, operation := range tradeOperation {
-				rp.TradeType = operation
-				wg.Add(1)
-				go newRequest(&wg, ch, p, rp)
-			}
+			wg.Add(1)
+			go newRequest(&wg, ch, p, rp)
 		}
 	}
 

@@ -18,7 +18,7 @@ type P2P interface {
 
 type PriceMatcher interface {
 	GetFiatOrders(map[string]map[string]p2p.OrderBook) []matcher.FiatPairOrder
-	GetProfitMatches([]matcher.FiatPairOrder) []matcher.FiatPairOrderProfit
+	GetProfitMatches([]matcher.FiatPairOrder) []matcher.TradeChain
 }
 
 func main() {
