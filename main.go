@@ -28,9 +28,10 @@ func main() {
 	flag.Parse()
 
 	if *parametersPath != "" {
-		err := params.ReqParams(*parametersPath)
+		err := params.Load(*parametersPath)
 		if err != nil {
-			log.Panicf("main - new request error: %s\n", err)
+			// todo лучше не писать "я не смог открыть файл" "произошла ошибка" - это засоряет лог ошибки и все. Почитать статьи как грамотно писать сообщение  об ошибке
+			log.Panicf("load conf: %s\n", err)
 		}
 	} else {
 		log.Println("there are no parameters' path")
@@ -39,6 +40,7 @@ func main() {
 
 	log.Println(params)
 
+	// todo работать с интерфесом, а не структорой
 	p := p2p.NewP2PBinance()
 
 	book, err := p.GetOrderBooks(context.Background(), params.Fiat, params.Asset)
