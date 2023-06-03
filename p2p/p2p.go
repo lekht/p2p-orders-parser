@@ -15,6 +15,7 @@ import (
 var tradeOperation []string = []string{"buy", "sell"}
 
 type P2PBinance struct {
+	// todo давай просто стандартный клиент юзать, из стандартной либы. А логику попыток лучше реализрвать на уровне P2PBinance
 	client *MyHttpClient
 }
 
@@ -50,13 +51,15 @@ func (p *P2PBinance) GetOrderBooks(ctx context.Context, fiats, assets []string) 
 		for _, fiat := range fiats {
 			rp.Fiat = fiat
 			wg.Add(1)
-			go newRequest(&wg, ch, p, rp)
+			go doRequest(&wg, ch, p, rp)
 		}
 	}
 
+	// todo этот wg не нужен, т/к ниже мы не в гоуьине будем читать
 	var wg1 sync.WaitGroup
 
 	wg1.Add(1)
+	// todo эта горутина не должна быть горутиной. Она цикл по каналу закончится и так, когда закроется канал
 	go func(map[string]map[string]OrderBook) {
 		for b := range ch {
 			f := b.Buy[0].Fiat
@@ -71,6 +74,7 @@ func (p *P2PBinance) GetOrderBooks(ctx context.Context, fiats, assets []string) 
 		wg1.Done()
 	}(book)
 
+	// todo это должно перехать наверх (перед проходом по циклу и быть в горутине) либо в отедбльной функции вызываются все методы doRequest мы их ждем и потом закрываем канал
 	wg.Wait()
 	close(ch)
 
@@ -78,9 +82,14 @@ func (p *P2PBinance) GetOrderBooks(ctx context.Context, fiats, assets []string) 
 	return book, nil
 }
 
-func newRequest(wg *sync.WaitGroup, ch chan OrderBook, p *P2PBinance, r RequestParameters) {
+// todo это должно быть методом P2PBinance
+// todo над doRequest должен быть метод который и занимается бизнес логикой
+// todo doRequest должен делать ровно одну вещи и делать ее хорошо, т/е сделать http запрос и вернуть ответ, распарсенный в структуру
+// todo вместо клиента лучше завернуть логику попыток во враппер над этим метдом
+// todo внутри не должно быть for _, operation := range tradeOperation { - кажд запрос в отдельной рутине
+func doRequest(wg *sync.WaitGroup, ch chan OrderBook, p *P2PBinance, r RequestParameters) {
 	var b OrderBook
-	for _, operation := range tradeOperation {
+	for _, operation := range tradeOperation { // todo это уже бизнес логика, а не логика запроса
 		r.TradeType = operation
 		payloadBuf := new(bytes.Buffer)
 		json.NewEncoder(payloadBuf).Encode(r)
@@ -88,21 +97,23 @@ func newRequest(wg *sync.WaitGroup, ch chan OrderBook, p *P2PBinance, r RequestP
 		// request to binance
 		req, err := http.NewRequest(http.MethodPost, "https://p2p.binance.com/bapi/c2c/v2/friendly/c2c/adv/search", payloadBuf)
 		if err != nil {
-			log.Panicf("newRequest() - NewRequest() error: %s\n", err)
+			// todo нигде кроме маин не должно быть паник
+			log.Panicf("doRequest() - NewRequest() error: %s\n", err)
 		}
 
 		req.Header.Add("content-type", "application/json")
 
 		response, err := p.client.do(req)
 		if err != nil {
-			log.Panicf("newRequest() - do() error: %s\n", err)
+			log.Panicf("doRequest() - do() error: %s\n", err)
 		}
 
 		orders, err := dataToOrders(response)
 		if err != nil {
-			log.Panicf("newRequest() - dataToOrders() error: %s\n", err)
+			log.Panicf("doRequest() - dataToOrders() error: %s\n", err)
 		}
 
+		// todo это уже бизнес логика, а не логика запроса
 		if r.TradeType == "buy" {
 			b.Buy = orders
 		} else {

@@ -26,9 +26,11 @@ func TestPriceMatcherSimple_GetFiatOrders(t *testing.T) {
 
 	book, err := p.GetOrderBooks(context.Background(), params.Fiat, params.Asset)
 	if err != nil {
+		t.Fatal(err)
 		log.Panic(err)
 	}
 
+	// todo вот эти book ты должен руками набить разные варианты и правильный ответ на вызов метода и через  assert проверять, что по факту, а что на должно быть. Table driven test
 	pairs := m.GetFiatOrders(book)
 	log.Println("\n", pairs)
 
@@ -45,6 +47,7 @@ func TestPriceMatcherSimple_GetProfitMatches(t *testing.T) {
 
 	pairs := m.GetFiatOrders(book)
 
+	// todo вот эти book ты должен руками набить разные варианты и правильный ответ на вызов метода и через  assert проверять, что по факту, а что на должно быть. Table driven test
 	chain := m.GetProfitMatches(pairs)
 	for i, c := range chain {
 		fmt.Println(i)

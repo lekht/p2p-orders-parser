@@ -47,15 +47,23 @@ func main() {
 	if err != nil {
 		log.Panic(err)
 	}
+
+	// todo сделать вывод не руками а метод типа PrintResults
 	fmt.Print("\n\n")
+	fmt.Print("buy ", "\n", book["RUB"]["BTC"].Buy, "\n\n")
 	fmt.Print("buy ", "\n", book["RUB"]["USDT"].Buy, "\n\n")
 	fmt.Print("sell ", "\n", book["RUB"]["USDT"].Sell, "\n\n")
-	fmt.Print("buy ", "\n", book["KZT"]["USDT"].Buy, "\n\n")
-	fmt.Print("buy ", "\n", book["RUB"]["BTC"].Buy, "\n\n")
 	fmt.Print("sell ", "\n", book["KZT"]["BTC"].Sell, "\n\n")
+	fmt.Print("buy ", "\n", book["KZT"]["USDT"].Buy, "\n\n")
 
-	// m := matcher.NewMatcher()
+	//m := matcher.NewMatcher()
 
 }
 
-// todo create constructors for all services
+func printBook(map[string]map[string]p2p.OrderBook) {
+	// todo достать из мапы
+	// todo осортировать по фиату, ассету
+	// todo напечатать все это в цикле
+	// todo печать только верхние
+	// todo печатать числа типа 1+3 как 1000
+}
