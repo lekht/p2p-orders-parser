@@ -23,15 +23,14 @@ type PriceMatcher interface {
 
 func main() {
 	// getting parameters for request
-
-	parametersPath := flag.String("c", "conf.yml", "path to config file")
+	path := flag.String("c", "", "path to config file")
 	flag.Parse()
 
-	if *parametersPath != "" {
-		err := params.Load(*parametersPath)
+	if *path != "" {
+		err := params.Load(*path)
 		if err != nil {
 			// todo лучше не писать "я не смог открыть файл" "произошла ошибка" - это засоряет лог ошибки и все. Почитать статьи как грамотно писать сообщение  об ошибке
-			log.Panicf("load conf: %s\n", err)
+			log.Panicln("Load: ", err)
 		}
 	} else {
 		log.Println("there are no parameters' path")
@@ -40,30 +39,36 @@ func main() {
 
 	log.Println(params)
 
-	// todo работать с интерфесом, а не структорой
-	p := p2p.NewP2PBinance()
+	var p P2P = p2p.NewP2PBinance()
 
 	book, err := p.GetOrderBooks(context.Background(), params.Fiat, params.Asset)
 	if err != nil {
 		log.Panic(err)
 	}
 
-	// todo сделать вывод не руками а метод типа PrintResults
-	fmt.Print("\n\n")
-	fmt.Print("buy ", "\n", book["RUB"]["BTC"].Buy, "\n\n")
-	fmt.Print("buy ", "\n", book["RUB"]["USDT"].Buy, "\n\n")
-	fmt.Print("sell ", "\n", book["RUB"]["USDT"].Sell, "\n\n")
-	fmt.Print("sell ", "\n", book["KZT"]["BTC"].Sell, "\n\n")
-	fmt.Print("buy ", "\n", book["KZT"]["USDT"].Buy, "\n\n")
+	var m PriceMatcher = matcher.NewMatcher()
 
-	//m := matcher.NewMatcher()
+	pairs := m.GetFiatOrders(book)
+	_ = m.GetProfitMatches(pairs)
+
+	printBook(book)
 
 }
 
-func printBook(map[string]map[string]p2p.OrderBook) {
+func printBook(book map[string]map[string]p2p.OrderBook) {
 	// todo достать из мапы
 	// todo осортировать по фиату, ассету
 	// todo напечатать все это в цикле
 	// todo печать только верхние
 	// todo печатать числа типа 1+3 как 1000
+
+	for f, fiat_book := range book {
+		fmt.Print("\n=========\n", f, "\n=========\n")
+
+		for a, asset := range fiat_book {
+			fmt.Print("----------\n", a, "\n----------\n")
+			fmt.Print("BUY:\n", asset.Buy[0], "\nSELL:\n", asset.Sell[0], "\n")
+		}
+		fmt.Print("\n")
+	}
 }
