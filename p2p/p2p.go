@@ -5,119 +5,157 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"log"
+	"fmt"
 	"net/http"
 	"strconv"
 	"sync"
 	"time"
 )
 
-var tradeOperation []string = []string{"buy", "sell"}
+const (
+	urlSearchOrders = "https://p2p.binance.com/bapi/c2c/v2/friendly/c2c/adv/search"
+
+	tradeTypeBuy  = "buy"
+	tradeTypeSell = "sell"
+)
+
+var (
+	ErrAllAttemptsFail  = errors.New("all attempts failed")
+	ErrInvalidTradeType = errors.New("invalid trade type")
+)
 
 type P2PBinance struct {
-	client *MyHttpClient
-}
-
-type MyHttpClient struct {
-	attempts int
-	http.Client
+	attempts   int
+	httpClient *http.Client
 }
 
 func NewP2PBinance() *P2PBinance {
 	c := http.Client{Timeout: 10 * time.Second}
-	client := MyHttpClient{attempts: 3, Client: c}
 
-	return &P2PBinance{client: &client}
+	return &P2PBinance{
+		attempts:   3,
+		httpClient: &c,
+	}
 }
 
-func (p *P2PBinance) GetOrderBooks(ctx context.Context, fiats, assets []string) (map[string]map[string]OrderBook, error) {
-	book := make(map[string]map[string]OrderBook)
+func (p *P2PBinance) GetOrderBooks(ctx context.Context, fiats, assets []string) (map[string]map[string]*OrderBook, error) {
+	book := make(map[string]map[string]*OrderBook)
 
 	var wg sync.WaitGroup
 
-	var rp RequestParameters
+	chanOrders := make(chan Orders)
 
-	rp.Countries = nil
-	rp.Page = 1
-	rp.PayTypes = nil
-	rp.ProMerchantAds = false
-	rp.PublisherType = nil
-	rp.Rows = 10
-	ch := make(chan OrderBook)
+	reqParams := p.makeRequestParameters(fiats, assets)
 
-	for _, asset := range assets {
-		rp.Asset = asset
-		for _, fiat := range fiats {
-			rp.Fiat = fiat
-			wg.Add(1)
-			go newRequest(&wg, ch, p, rp)
+	for _, rp := range reqParams {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			p.getOrders(chanOrders, rp)
+		}()
+	}
+
+	for orders := range chanOrders {
+		f := orders.Orders[0].Fiat
+		a := orders.Orders[0].Asset
+
+		if book[f] == nil {
+			book[f] = make(map[string]*OrderBook)
+			book[f][a] = &OrderBook{}
+		}
+
+		b := book[f][a]
+		switch orders.TradeType {
+		case tradeTypeBuy:
+			b.Buy = orders.Orders
+		case tradeTypeSell:
+			b.Buy = orders.Orders
+		default:
+			return nil, ErrInvalidTradeType
 		}
 	}
 
-	var wg1 sync.WaitGroup
-
-	wg1.Add(1)
-	go func(map[string]map[string]OrderBook) {
-		for b := range ch {
-			f := b.Buy[0].Fiat
-			a := b.Buy[0].Asset
-
-			if book[f] == nil {
-				book[f] = make(map[string]OrderBook)
-			}
-
-			book[f][a] = b
-		}
-		wg1.Done()
-	}(book)
-
 	wg.Wait()
-	close(ch)
+	close(chanOrders)
 
-	wg1.Wait()
 	return book, nil
 }
 
-func newRequest(wg *sync.WaitGroup, ch chan OrderBook, p *P2PBinance, r RequestParameters) {
-	var b OrderBook
-	for _, operation := range tradeOperation {
-		r.TradeType = operation
-		payloadBuf := new(bytes.Buffer)
-		json.NewEncoder(payloadBuf).Encode(r)
-
-		// request to binance
-		req, err := http.NewRequest(http.MethodPost, "https://p2p.binance.com/bapi/c2c/v2/friendly/c2c/adv/search", payloadBuf)
-		if err != nil {
-			log.Panicf("newRequest() - NewRequest() error: %s\n", err)
-		}
-
-		req.Header.Add("content-type", "application/json")
-
-		response, err := p.client.do(req)
-		if err != nil {
-			log.Panicf("newRequest() - do() error: %s\n", err)
-		}
-
-		orders, err := dataToOrders(response)
-		if err != nil {
-			log.Panicf("newRequest() - dataToOrders() error: %s\n", err)
-		}
-
-		if r.TradeType == "buy" {
-			b.Buy = orders
-		} else {
-			b.Sell = orders
+func (p *P2PBinance) makeRequestParameters(fiats, assets []string) []RequestParameters {
+	var reqParams []RequestParameters
+	for _, asset := range assets {
+		for _, fiat := range fiats {
+			reqParams = append(reqParams, RequestParameters{
+				Page:      1,
+				Rows:      10,
+				Asset:     asset,
+				Fiat:      fiat,
+				TradeType: "buy",
+			},
+				RequestParameters{
+					Page:      1,
+					Rows:      10,
+					Asset:     asset,
+					Fiat:      fiat,
+					TradeType: "sell",
+				})
 		}
 	}
-
-	ch <- b
-	wg.Done()
+	return reqParams
 }
 
-func (c *MyHttpClient) do(r *http.Request) (*Response, error) {
+func (p *P2PBinance) getOrders(ch chan<- Orders, r RequestParameters) error {
+	o, err := p.doRequest(r)
+	if err != nil {
+		return err
+	}
+
+	var orders = Orders{
+		Orders: o,
+	}
+
+	switch r.TradeType {
+	case tradeTypeBuy:
+		orders.TradeType = tradeTypeBuy
+	case tradeTypeSell:
+		orders.TradeType = tradeTypeSell
+	default:
+		return ErrInvalidTradeType
+	}
+
+	ch <- orders
+	return nil
+}
+
+func (p *P2PBinance) doRequest(r RequestParameters) ([]Order, error) {
+	payloadBuf := new(bytes.Buffer)
+	json.NewEncoder(payloadBuf).Encode(r)
+
+	// doRequest to binance
+	req, err := http.NewRequest(http.MethodPost, urlSearchOrders, payloadBuf)
+	if err != nil {
+		return nil, fmt.Errorf("doRequest() - NewRequest() error: %w", err)
+	}
+
+	req.Header.Add("content-type", "application/json")
+
+	response, err := p.do(req)
+	if err != nil {
+		return nil, fmt.Errorf("doRequest() - do() error: %w", err)
+	}
+
+	orders, err := dataToOrders(response)
+	if err != nil {
+		return nil, fmt.Errorf("doRequest() - dataToOrders() error: %w", err)
+	}
+
+	return orders, nil
+}
+
+func (p *P2PBinance) do(r *http.Request) (*Response, error) {
 	var response Response
-	for i := 0; i <= c.attempts; i++ {
-		resp, err := c.Client.Do(r)
+	for i := 0; i < p.attempts; i++ {
+		resp, err := p.httpClient.Do(r)
 		if err != nil {
 			continue
 		}
@@ -128,12 +166,12 @@ func (c *MyHttpClient) do(r *http.Request) (*Response, error) {
 
 		err = json.NewDecoder(resp.Body).Decode(&response)
 		if err != nil {
-			log.Panic(err)
+			return nil, err
 		}
 		return &response, nil
 	}
 
-	return nil, errors.New("do() - all atemptes failed")
+	return nil, fmt.Errorf("do() - %w", ErrAllAttemptsFail)
 }
 
 func dataToOrders(r *Response) ([]Order, error) {

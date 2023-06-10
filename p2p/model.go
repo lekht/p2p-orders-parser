@@ -52,3 +52,8 @@ type Order struct {
 	PaymentMethod string
 	Advertiser    string
 }
+
+type Orders struct {
+	Orders    []Order
+	TradeType string
+}
