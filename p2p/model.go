@@ -45,6 +45,11 @@ type OrderBook struct {
 	Sell []Order
 }
 
+type Orders struct {
+	Orders    []Order
+	TradeType string
+}
+
 type Order struct {
 	Asset         string
 	Fiat          string

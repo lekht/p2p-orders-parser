@@ -8,6 +8,7 @@ import (
 	"p2p-orders-parser/config"
 	"p2p-orders-parser/matcher"
 	"p2p-orders-parser/p2p"
+	"strconv"
 )
 
 var params config.Conf
@@ -26,18 +27,10 @@ func main() {
 	path := flag.String("c", "", "path to config file")
 	flag.Parse()
 
-	if *path != "" {
-		err := params.Load(*path)
-		if err != nil {
-			// todo лучше не писать "я не смог открыть файл" "произошла ошибка" - это засоряет лог ошибки и все. Почитать статьи как грамотно писать сообщение  об ошибке
-			log.Panicln("Load: ", err)
-		}
-	} else {
-		log.Println("there are no parameters' path")
-		log.Panicf("you should use the flag ---> --parameters=")
+	err := params.Parse(*path)
+	if err != nil {
+		log.Panicf("failed to parse config: %s\n", err)
 	}
-
-	log.Println(params)
 
 	var p P2P = p2p.NewP2PBinance()
 
@@ -49,25 +42,31 @@ func main() {
 	var m PriceMatcher = matcher.NewMatcher()
 
 	pairs := m.GetFiatOrders(book)
-	_ = m.GetProfitMatches(pairs)
+	result := m.GetProfitMatches(pairs)
+
+	for i, c := range result {
+		fmt.Println(i)
+		fmt.Println(c)
+		fmt.Println(c.Profit())
+		fmt.Println(c.Fiats())
+	}
 
 	printBook(book)
-
 }
 
 func printBook(book map[string]map[string]p2p.OrderBook) {
-	// todo достать из мапы
-	// todo осортировать по фиату, ассету
-	// todo напечатать все это в цикле
-	// todo печать только верхние
-	// todo печатать числа типа 1+3 как 1000
 
-	for f, fiat_book := range book {
+	for f, fiatBook := range book {
 		fmt.Print("\n=========\n", f, "\n=========\n")
 
-		for a, asset := range fiat_book {
+		for a, b := range fiatBook {
+			buy := b.Buy[0]
+			sell := b.Sell[0]
 			fmt.Print("----------\n", a, "\n----------\n")
-			fmt.Print("BUY:\n", asset.Buy[0], "\nSELL:\n", asset.Sell[0], "\n")
+			fmt.Print("BUY:\n")
+			fmt.Print(buy.Asset, " ", buy.Fiat, " ", strconv.FormatFloat(buy.Price, 'f', -1, 64), " ", buy.PaymentMethod, " ", buy.Advertiser, "\n")
+			fmt.Print("SELL:\n")
+			fmt.Print(sell.Asset, " ", sell.Fiat, " ", sell.Price, " ", sell.PaymentMethod, " ", sell.Advertiser, "\n")
 		}
 		fmt.Print("\n")
 	}
