@@ -8,19 +8,12 @@ type TradeChain struct {
 	orders []FiatPairOrder // [buy:rub-usdt sell:rub-usdt] or [buy:rub-usdt sell:kzt-usdt] [buy:kzt-btc sell:rub-btc]
 }
 
-//rub = USDT-kzt = BTC-rub
-
 type PriceMatcherSimple struct{}
 
 type FiatPairOrder struct {
 	Buy  p2p.Order
 	Sell p2p.Order
 }
-
-// type PriceMatcher interface {
-// 	GetFiatOrders(map[string]map[string]p2p.OrderBook) []matcher.FiatPairOrder
-// 	GetProfitMatches([]matcher.FiatPairOrder) []matcher.FiatPairOrderProfit
-// }
 
 func NewMatcher() *PriceMatcherSimple {
 	return &PriceMatcherSimple{}
@@ -111,7 +104,6 @@ func searchOrders(buy, sell []p2p.Order, fiat, asset string, i int) ([]p2p.Order
 		}
 
 	case 1:
-		// sell asset || f != fiat
 		for j, o := range sell {
 			if o.Asset == asset && o.Fiat != "RUB" {
 				ok = true
@@ -127,7 +119,6 @@ func searchOrders(buy, sell []p2p.Order, fiat, asset string, i int) ([]p2p.Order
 		}
 
 	case 2:
-		// buy fiat || != asset
 		for j, o := range buy {
 			if o.Fiat == fiat && o.Asset != asset {
 				ok = true
@@ -143,7 +134,6 @@ func searchOrders(buy, sell []p2p.Order, fiat, asset string, i int) ([]p2p.Order
 		}
 
 	case 3:
-		// sell asset || fiat == "RUB"
 		for j, o := range sell {
 			if o.Fiat == "RUB" && o.Asset == asset {
 				ok = true
@@ -174,9 +164,6 @@ func removeIndex(s []p2p.Order, index int) []p2p.Order {
 	}
 	return append(s[:index], s[index+1:]...)
 }
-
-//rub-usdt-kzt 5 buy  5000kzt -> 1000 rub
-//rub-btc-kzt 6 sell  1000rub -> 6000 kzt
 
 func (t TradeChain) Profit() float64 {
 	var c float64 = 1
