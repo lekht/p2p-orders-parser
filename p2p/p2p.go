@@ -22,6 +22,7 @@ var (
 	ErrWrongCode        = errors.New("wrong response code")
 	ErrAttemptsFailed   = errors.New("all  attempts failed")
 	ErrInvalidTradeType = errors.New("invalid trade type")
+	ErrNoInput          = errors.New("no input parameters")
 )
 
 type P2PBinance struct {
@@ -36,6 +37,10 @@ func NewP2PBinance() *P2PBinance {
 }
 
 func (p *P2PBinance) GetOrderBooks(ctx context.Context, fiats, assets []string) (map[string]map[string]OrderBook, error) {
+	if len(fiats) == 0 || len(assets) == 0 {
+		return nil, errors.Wrap(ErrNoInput, "GetOrderBooks()")
+	}
+
 	book := make(map[string]map[string]OrderBook)
 
 	rps := makeRequestParameters(fiats, assets)
