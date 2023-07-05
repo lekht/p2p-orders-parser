@@ -5,7 +5,7 @@ import (
 )
 
 type TradeChain struct {
-	orders []FiatPairOrder // [buy:rub-usdt sell:rub-usdt] or [buy:rub-usdt sell:kzt-usdt] [buy:kzt-btc sell:rub-btc]
+	Orders []FiatPairOrder // [buy:rub-usdt sell:rub-usdt] or [buy:rub-usdt sell:kzt-usdt] [buy:kzt-btc sell:rub-btc]
 }
 
 type PriceMatcherSimple struct{}
@@ -75,7 +75,7 @@ func (p *PriceMatcherSimple) GetProfitMatches(pairs []FiatPairOrder) []TradeChai
 		var chain []FiatPairOrder
 		chain = append(chain, p1, p2)
 
-		tradeChain[chainCount].orders = chain
+		tradeChain[chainCount].Orders = chain
 		chainCount++
 	}
 
@@ -120,7 +120,7 @@ func searchOrders(buy, sell []p2p.Order, fiat, asset string, i int) ([]p2p.Order
 
 	case 2:
 		for j, o := range buy {
-			if o.Fiat == fiat && o.Asset != asset {
+			if o.Fiat == fiat {
 				ok = true
 				result = append(result, o)
 				fiat = o.Fiat
@@ -167,7 +167,7 @@ func removeIndex(s []p2p.Order, index int) []p2p.Order {
 
 func (t TradeChain) Profit() float64 {
 	var c float64 = 1
-	for _, o := range t.orders {
+	for _, o := range t.Orders {
 		c /= o.Buy.Price
 		c *= o.Sell.Price
 	}
@@ -176,7 +176,7 @@ func (t TradeChain) Profit() float64 {
 
 func (t TradeChain) Fiats() []string {
 	var fiats []string
-	for _, o := range t.orders {
+	for _, o := range t.Orders {
 		fiats = append(fiats, o.Buy.Fiat, o.Sell.Fiat)
 	}
 	return fiats
