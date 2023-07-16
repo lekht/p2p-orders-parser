@@ -54,6 +54,7 @@ type Order struct {
 	Asset         string
 	Fiat          string
 	Price         float64
+	Available     float64
 	PaymentMethod string
 	Advertiser    string
 }

@@ -8,10 +8,15 @@ import (
 	"p2p-orders-parser/config"
 	"p2p-orders-parser/matcher"
 	"p2p-orders-parser/p2p"
+	mongodb "p2p-orders-parser/storage/mongo"
 	"strconv"
 )
 
 var params config.Conf
+
+type Storage interface {
+	Add() error
+}
 
 type P2P interface {
 	GetOrderBooks(ctx context.Context, fiats, assets []string) (map[string]map[string]p2p.OrderBook, error) // fiat->asset->[]Order
@@ -32,6 +37,12 @@ func main() {
 		log.Panicf("failed to parse config: %s\n", err)
 	}
 
+	db, err := mongodb.New()
+	if err != nil {
+		log.Panicf("failed to connect db: %s\n", err)
+
+	}
+
 	var p P2P = p2p.NewP2PBinance()
 
 	book, err := p.GetOrderBooks(context.Background(), params.Fiat, params.Asset)
@@ -43,6 +54,16 @@ func main() {
 
 	pairs := m.GetFiatOrders(book)
 	result := m.GetProfitMatches(pairs)
+
+	_ = db
+	err = db.AddBooks(book)
+	if err != nil {
+		log.Panic("addbook ", err)
+	}
+	err = db.AddChains(result)
+	if err != nil {
+		log.Panic("addchains ", err)
+	}
 
 	for i, c := range result {
 		fmt.Print(i+1, ". ")
@@ -104,7 +125,6 @@ func printFullBook(book map[string]map[string]p2p.OrderBook) {
 // todo при запуске приложения оно должно раз в минуту по cron делать запросы и склдывать все результаты в БД - 2 табл - books & profit_chains. В кажд добавить время, когда мы делали очередной запрос
 // todo поля таблицы book: created_at, fiat, asset, buy_price, buy_available, buy_method, sell_price, sell_available, sell_method. Available должен быть выражен в asset
 // todo поля таблицы profit_chain: created_at, fiat, roi, массив буков и в каждом поля: fiat, asset, side (buy/sell), price, method
-// todo изучить как пользоваться дебагером и показать
 // todo вывод профитных матчей причесать (убрать все вот эти скобки, ник убрать, числа порядковые убрать или писать на той же строчке, указывать где бай где сел, в самом переди писать валюту в которой мы зарабатываем, сортировать все записи по валюте в которой зарабываем, прибыль писать в процентах - это называет ROI )
 
 // todo опционально - https://pmihaylov.com/go-service-with-elk/ - изучить статью и внедрить все что там написано

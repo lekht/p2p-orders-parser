@@ -206,6 +206,11 @@ func dataToOrders(r *Response) ([]Order, error) {
 			return nil, errors.Wrap(err, "failed to convert price into float64")
 		}
 		o.Price = price
+		available, err := strconv.ParseFloat(d.Adv.Available, 64)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to convert price into float64")
+		}
+		o.Available = available
 		o.PaymentMethod = d.Adv.Trade[0].TradeName
 		o.Advertiser = d.Advertiser.Nick
 
