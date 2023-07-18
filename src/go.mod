@@ -8,8 +8,11 @@ require (
 	go.mongodb.org/mongo-driver v1.12.0
 )
 
+require go.uber.org/atomic v1.9.0 // indirect
+
 require (
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
+	github.com/go-co-op/gocron v1.30.1
 	github.com/golang/snappy v0.0.1 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/klauspost/compress v1.13.6 // indirect
@@ -18,6 +21,7 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/montanaflynn/stats v0.0.0-20171201202039-1bf9dbcd8cbe // indirect
 	github.com/pelletier/go-toml/v2 v2.0.6 // indirect
+	github.com/robfig/cron/v3 v3.0.1
 	github.com/rogpeppe/go-internal v1.10.0 // indirect
 	github.com/spf13/afero v1.9.3 // indirect
 	github.com/spf13/cast v1.5.0 // indirect

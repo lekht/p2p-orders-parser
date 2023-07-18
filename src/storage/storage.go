@@ -3,7 +3,7 @@ package storage
 import (
 	"p2p-orders-parser/matcher"
 	"p2p-orders-parser/p2p"
-	dummydb "p2p-orders-parser/storage/dummy"
+	mongodb "p2p-orders-parser/storage/mongo"
 
 	"github.com/pkg/errors"
 )
@@ -18,7 +18,7 @@ type Storage struct {
 }
 
 func New() (*Storage, error) {
-	db, err := dummydb.New()
+	db, err := mongodb.New()
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create niw storage")
 	}

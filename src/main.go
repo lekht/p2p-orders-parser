@@ -10,6 +10,9 @@ import (
 	"p2p-orders-parser/p2p"
 	"p2p-orders-parser/storage"
 	"strconv"
+	"time"
+
+	"github.com/go-co-op/gocron"
 )
 
 var params config.Conf
@@ -40,36 +43,45 @@ func main() {
 
 	var p P2P = p2p.NewP2PBinance()
 
-	book, err := p.GetOrderBooks(context.Background(), params.Fiat, params.Asset)
-	if err != nil {
-		log.Panic(err)
-	}
-
 	var m PriceMatcher = matcher.NewMatcher()
+	// cron here
 
-	pairs := m.GetFiatOrders(book)
-	result := m.GetProfitMatches(pairs)
-
-	_ = db
-	err = db.AddBooks(book)
-	if err != nil {
-		log.Panic("addbook ", err)
-	}
-	err = db.AddChains(result)
-	if err != nil {
-		log.Panic("addchains ", err)
-	}
-
-	for i, c := range result {
-		fmt.Print(i+1, ". ")
-		for _, o := range c.Orders {
-			fmt.Print("BUY:[", o.Buy.Fiat, " >>> ", o.Buy.Asset, " ", strconv.FormatFloat(o.Buy.Price, 'f', -1, 64), "] ")
-			fmt.Print("SELL:[", o.Sell.Asset, " >>> ", o.Sell.Fiat, " ", strconv.FormatFloat(o.Sell.Price, 'f', -1, 64), "] ")
+	task := func(db *storage.Storage, p P2P, m PriceMatcher) {
+		book, err := p.GetOrderBooks(context.Background(), params.Fiat, params.Asset)
+		if err != nil {
+			log.Panic(err)
 		}
-		fmt.Print("PROFIT: ", strconv.FormatFloat(c.Profit()*100, 'f', 0, 64), "%", "\n")
+
+		pairs := m.GetFiatOrders(book)
+		result := m.GetProfitMatches(pairs)
+
+		_ = db
+		err = db.AddBooks(book)
+		if err != nil {
+			log.Panic("addbook ", err)
+		}
+		err = db.AddChains(result)
+		if err != nil {
+			log.Panic("addchains ", err)
+		}
+
+		for i, c := range result {
+			fmt.Print(i+1, ". ")
+			for _, o := range c.Orders {
+				fmt.Print("BUY:[", o.Buy.Fiat, " >>> ", o.Buy.Asset, " ", strconv.FormatFloat(o.Buy.Price, 'f', -1, 64), "] ")
+				fmt.Print("SELL:[", o.Sell.Asset, " >>> ", o.Sell.Fiat, " ", strconv.FormatFloat(o.Sell.Price, 'f', -1, 64), "] ")
+			}
+			fmt.Print("PROFIT: ", strconv.FormatFloat(c.Profit()*100, 'f', 0, 64), "%", "\n")
+		}
+
+		printFullBook(book)
 	}
 
-	printFullBook(book)
+	s := gocron.NewScheduler(time.UTC)
+
+	s.Every(1).Minute().Do(func() { task(db, p, m) })
+
+	s.StartBlocking()
 }
 
 // 1. Buy:[RUB >>> USDT 80.00] SELL:[USDT >>> RUB 82.00]
