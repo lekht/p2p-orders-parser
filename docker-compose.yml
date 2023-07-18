@@ -1,7 +1,5 @@
 version: '3'
 services:
-    # Дополнительные параметры и настройки парсера
-
   # Mongo service
   mongodb:
     image: mongo:latest
@@ -9,24 +7,17 @@ services:
       - 27017:27017
     # networks:
     #   - parser-app
-    volumes:
-      - ./init-scripts:/docker-entrypoint-initdb.d
+    # volumes:
+      # - ./init-scripts:/docker-entrypoint-initdb.d
     # Дополнительные параметры и настройки контейнера MongoDB
 
   # Coin parser service
   parser:
     build:
-      context: ./src # Путь к директории с исходным кодом парсера
-      # dockerfile: Dockerfile 
+      context: ./src
     image: parser:latest
-    # networks:
-    #   - parser-app
     depends_on:
       - mongodb
-
-# networks:
-#   parser-app:
-#     driver: bridge
 
 # volumes:
 #   mongo-db:

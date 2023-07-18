@@ -8,15 +8,11 @@ import (
 	"p2p-orders-parser/config"
 	"p2p-orders-parser/matcher"
 	"p2p-orders-parser/p2p"
-	mongodb "p2p-orders-parser/storage/mongo"
+	"p2p-orders-parser/storage"
 	"strconv"
 )
 
 var params config.Conf
-
-type Storage interface {
-	Add() error
-}
 
 type P2P interface {
 	GetOrderBooks(ctx context.Context, fiats, assets []string) (map[string]map[string]p2p.OrderBook, error) // fiat->asset->[]Order
@@ -37,10 +33,9 @@ func main() {
 		log.Panicf("failed to parse config: %s\n", err)
 	}
 
-	db, err := mongodb.New()
+	db, err := storage.New()
 	if err != nil {
 		log.Panicf("failed to connect db: %s\n", err)
-
 	}
 
 	var p P2P = p2p.NewP2PBinance()
@@ -79,24 +74,6 @@ func main() {
 
 // 1. Buy:[RUB >>> USDT 80.00] SELL:[USDT >>> RUB 82.00]
 // 2. Buy:[RUB >>> USDT 80.00] SELL:[] BUY:[] SELL:[USDT >>> RUB 82.00]
-
-func printBook(book map[string]map[string]p2p.OrderBook) {
-
-	for f, fiatBook := range book {
-		fmt.Print("\n=========\n", f, "\n=========\n")
-
-		for a, b := range fiatBook {
-			buy := b.Buy[0]
-			sell := b.Sell[0]
-			fmt.Print("----------\n", a, "\n----------\n")
-			fmt.Print("BUY:\n")
-			fmt.Print(buy.Asset, " ", buy.Fiat, " ", strconv.FormatFloat(buy.Price, 'f', -1, 64), " ", buy.PaymentMethod, " ", buy.Advertiser, "\n")
-			fmt.Print("SELL:\n")
-			fmt.Print(sell.Asset, " ", sell.Fiat, " ", strconv.FormatFloat(sell.Price, 'f', -1, 64), " ", sell.PaymentMethod, " ", sell.Advertiser, "\n")
-		}
-		fmt.Print("\n")
-	}
-}
 
 func printFullBook(book map[string]map[string]p2p.OrderBook) {
 
