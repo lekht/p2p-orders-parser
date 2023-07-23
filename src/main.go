@@ -43,7 +43,7 @@ func main() {
 
 	var p P2P = p2p.NewP2PBinance()
 
-	var m PriceMatcher = matcher.NewMatcher()
+	var m PriceMatcher = matcher.NewMatcher(params)
 	// cron here
 
 	task := func(db *storage.Storage, p P2P, m PriceMatcher) {
@@ -64,17 +64,20 @@ func main() {
 		if err != nil {
 			log.Panic("addchains ", err)
 		}
-
+		var ordersNames [][]string
 		for i, c := range result {
 			fmt.Print(i+1, ". ")
+			var names []string
 			for _, o := range c.Orders {
-				fmt.Print("BUY:[", o.Buy.Fiat, " >>> ", o.Buy.Asset, " ", strconv.FormatFloat(o.Buy.Price, 'f', -1, 64), "] ")
-				fmt.Print("SELL:[", o.Sell.Asset, " >>> ", o.Sell.Fiat, " ", strconv.FormatFloat(o.Sell.Price, 'f', -1, 64), "] ")
+				// fmt.Print("BUY:[", o.Buy.Fiat, " >>> ", o.Buy.Asset, " ", strconv.FormatFloat(o.Buy.Price, 'f', -1, 64), "] ")
+				// fmt.Print("SELL:[", o.Sell.Asset, " >>> ", o.Sell.Fiat, " ", strconv.FormatFloat(o.Sell.Price, 'f', -1, 64), "] ")
+				names = append(names, o.Buy.Advertiser, o.Sell.Advertiser)
 			}
-			fmt.Print("PROFIT: ", strconv.FormatFloat(c.Profit()*100, 'f', 0, 64), "%", "\n")
+			ordersNames = append(ordersNames, names)
+			// fmt.Print("PROFIT: ", c.Profit(), "%", "\n")
 		}
-
-		printFullBook(book)
+		fmt.Println(ordersNames)
+		// printFullBook(book)
 	}
 
 	s := gocron.NewScheduler(time.UTC)

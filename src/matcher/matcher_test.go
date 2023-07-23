@@ -1,6 +1,7 @@
 package matcher
 
 import (
+	"p2p-orders-parser/config"
 	"p2p-orders-parser/p2p"
 	"reflect"
 	"testing"
@@ -18,13 +19,13 @@ func TestPriceMatcherSimple_GetFiatOrders(t *testing.T) {
 	}{
 		{
 			name: "empty book",
-			p:    NewMatcher(),
+			p:    NewMatcher(config.Conf{}),
 			args: args{
 				m: map[string]map[string]p2p.OrderBook{},
 			},
 			want: nil,
 		},
-		{"1", NewMatcher(), args{map[string]map[string]p2p.OrderBook{
+		{"1", NewMatcher(config.Conf{}), args{map[string]map[string]p2p.OrderBook{
 			"RUB": {
 				"USDT": {
 					Buy: []p2p.Order{
@@ -100,8 +101,8 @@ func TestPriceMatcherSimple_GetProfitMatches(t *testing.T) {
 		args args
 		want []TradeChain
 	}{
-		{"empty", NewMatcher(), args{pairs: []FiatPairOrder{}}, []TradeChain{}},
-		{"1", NewMatcher(), args{
+		{"empty", NewMatcher(config.Conf{}), args{pairs: []FiatPairOrder{}}, []TradeChain{}},
+		{"1", NewMatcher(config.Conf{}), args{
 			pairs: []FiatPairOrder{
 				{
 					Buy:  p2p.Order{Asset: "USDT", Fiat: "RUB", Price: 80.0, PaymentMethod: "", Advertiser: "RU1"},
