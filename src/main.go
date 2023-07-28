@@ -44,7 +44,6 @@ func main() {
 	var p P2P = p2p.NewP2PBinance()
 
 	var m PriceMatcher = matcher.NewMatcher(params)
-	// cron here
 
 	task := func(db *storage.Storage, p P2P, m PriceMatcher) {
 		book, err := p.GetOrderBooks(context.Background(), params.Fiat, params.Asset)
@@ -53,31 +52,21 @@ func main() {
 		}
 
 		pairs := m.GetFiatOrders(book)
-		result := m.GetProfitMatches(pairs)
+		chains := m.GetProfitMatches(pairs)
 
 		_ = db
 		err = db.AddBooks(book)
 		if err != nil {
 			log.Panic("addbook ", err)
 		}
-		err = db.AddChains(result)
+		err = db.AddChains(chains)
 		if err != nil {
 			log.Panic("addchains ", err)
 		}
-		var ordersNames [][]string
-		for i, c := range result {
-			fmt.Print(i+1, ". ")
-			var names []string
-			for _, o := range c.Orders {
-				// fmt.Print("BUY:[", o.Buy.Fiat, " >>> ", o.Buy.Asset, " ", strconv.FormatFloat(o.Buy.Price, 'f', -1, 64), "] ")
-				// fmt.Print("SELL:[", o.Sell.Asset, " >>> ", o.Sell.Fiat, " ", strconv.FormatFloat(o.Sell.Price, 'f', -1, 64), "] ")
-				names = append(names, o.Buy.Advertiser, o.Sell.Advertiser)
-			}
-			ordersNames = append(ordersNames, names)
-			// fmt.Print("PROFIT: ", c.Profit(), "%", "\n")
-		}
-		fmt.Println(ordersNames)
-		// printFullBook(book)
+
+		printChains(chains)
+		fmt.Print("\n")
+		printFullBook(book)
 	}
 
 	s := gocron.NewScheduler(time.UTC)
@@ -89,6 +78,27 @@ func main() {
 
 // 1. Buy:[RUB >>> USDT 80.00] SELL:[USDT >>> RUB 82.00]
 // 2. Buy:[RUB >>> USDT 80.00] SELL:[] BUY:[] SELL:[USDT >>> RUB 82.00]
+
+func printChains(chains []matcher.TradeChain) {
+	for i, c := range chains {
+		fmt.Print(i+1, ". ")
+		for _, o := range c.Orders {
+			fmt.Print("BUY:[", o.Buy.Fiat, " >>> ", o.Buy.Asset, " ", strconv.FormatFloat(o.Buy.Price, 'f', -1, 64), "] ")
+			fmt.Print("SELL:[", o.Sell.Asset, " >>> ", o.Sell.Fiat, " ", strconv.FormatFloat(o.Sell.Price, 'f', -1, 64), "] ")
+			// fmt.Println(o.Buy.Advertiser, " ", o.Sell.Advertiser)
+		}
+		fmt.Print("PROFIT: ", c.Profit(), "%", "\n")
+	}
+	// for i := 0; i < 100; i++ {
+	// 	fmt.Print(i+1, ". ")
+	// 	for _, o := range chains[i].Orders {
+	// 		fmt.Print("BUY:[", o.Buy.Fiat, " >>> ", o.Buy.Asset, " ", strconv.FormatFloat(o.Buy.Price, 'f', -1, 64), "] ")
+	// 		fmt.Print("SELL:[", o.Sell.Asset, " >>> ", o.Sell.Fiat, " ", strconv.FormatFloat(o.Sell.Price, 'f', -1, 64), "] ")
+	// 		// fmt.Println(o.Buy.Advertiser, " ", o.Sell.Advertiser)
+	// 	}
+	// 	fmt.Print("PROFIT: ", chains[i].Profit(), "%", "\n")
+	// }
+}
 
 func printFullBook(book map[string]map[string]p2p.OrderBook) {
 

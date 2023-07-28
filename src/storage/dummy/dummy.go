@@ -46,8 +46,11 @@ type ProfitOrder struct {
 }
 
 func (d *DummyStorage) AddBooks(b map[string]map[string]p2p.OrderBook) error {
-	fmt.Println(convertBooks(b)...)
-	fmt.Print("\n")
+	forPrint := convertBooks(b)
+	for i := 0; i < 5; i++ {
+		fmt.Println(forPrint[i])
+	}
+	fmt.Print("...\n")
 
 	return nil
 }
@@ -80,8 +83,11 @@ func convertBooks(orderBooks map[string]map[string]p2p.OrderBook) []interface{} 
 }
 
 func (d *DummyStorage) AddChains(chains []matcher.TradeChain) error {
-	fmt.Println(convertChains(chains)...)
-	fmt.Print("\n")
+	forPrint := convertChains(chains)
+	for i := 0; i < 5; i++ {
+		fmt.Println(forPrint[i])
+	}
+	fmt.Print("...\n")
 
 	return nil
 
