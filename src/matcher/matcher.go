@@ -94,44 +94,26 @@ func sort(pairs []FiatPairOrder, start, end int) {
 func (p *PriceMatcherSimple) GetProfitMatches(pairs []FiatPairOrder) []TradeChain {
 	tradeChain := make([]TradeChain, 0)
 
-	var buyOrders []p2p.Order
-	var sellOrders []p2p.Order
+	buy := make([]p2p.Order, len(pairs))
+	sell := make([]p2p.Order, len(pairs))
 
 	sortedPairs := sortPairsByProfit(pairs)
 
-	for _, pair := range sortedPairs {
-		buyOrders = append(buyOrders, pair.Buy)
-		sellOrders = append(sellOrders, pair.Sell)
+	for i, pair := range sortedPairs {
+		buy[i] = pair.Buy
+		sell[i] = pair.Sell
 	}
 
-	for i, b := range buyOrders {
+	for i, b := range buy {
 
-		buy := append([]p2p.Order(nil), buyOrders...)
-		sell := append([]p2p.Order(nil), sellOrders...)
-
-		buy[i] = p2p.Order{}
-
-	inner:
-		for {
-			orders, ok := searchLongChain(buy, sell, b)
-			if !ok {
-				break inner
-			}
-
-			tradeChain = append(tradeChain, TradeChain{
-				[]FiatPairOrder{
-					{Buy: b, Sell: sellOrders[orders[0]]},
-					{Buy: buyOrders[orders[1]], Sell: sellOrders[orders[2]]},
-				},
-			})
+		if long, ok := searchLongChain(removeOrder(buy, i), sell, b, b.Fiat, 0); ok {
+			tradeChain = append(tradeChain, TradeChain{[]FiatPairOrder{
+				{Buy: b, Sell: long[0]},
+				{Buy: long[1], Sell: long[2]},
+			}})
 		}
-
-		newSell := append([]p2p.Order(nil), sellOrders...)
-		chains := searchShortChain(b, newSell)
-		for _, c := range chains {
-			tradeChain = append(tradeChain, TradeChain{[]FiatPairOrder{c}})
-		}
-
+		short := searchShortChain(b, sell)
+		tradeChain = append(tradeChain, TradeChain{short})
 	}
 
 	return tradeChain
@@ -141,7 +123,7 @@ func searchShortChain(b p2p.Order, sell []p2p.Order) []FiatPairOrder {
 	short := make([]FiatPairOrder, 0)
 
 	for _, s := range sell {
-		if s.Asset == b.Asset && s.Fiat == b.Fiat {
+		if s.Asset == b.Asset {
 			short = append(short, FiatPairOrder{Buy: b, Sell: s})
 		}
 	}
@@ -149,54 +131,53 @@ func searchShortChain(b p2p.Order, sell []p2p.Order) []FiatPairOrder {
 	return short
 }
 
-func searchLongChain(buy, sell []p2p.Order, buyOrder p2p.Order) ([]int, bool) {
-	mainFiat, currentFiat := buyOrder.Fiat, buyOrder.Fiat
-	currentAsset := buyOrder.Asset
+func searchLongChain(buy, sell []p2p.Order, order p2p.Order, mainFiat string, count int) ([]p2p.Order, bool) {
+	currentFiat := order.Fiat
+	currentAsset := order.Asset
 
-	i := 1
-	ok := true
+	count++
 
-	orders := make([]int, 0, 4)
-
-Loop:
-	for i < 4 && ok {
-		switch i {
-		case 1:
-			for j, s := range sell {
-				if s.Fiat != mainFiat && s.Asset == currentAsset {
-					orders = append(orders, j)
-					currentFiat = s.Fiat
-					sell[j] = p2p.Order{}
-					i++
-					continue Loop
+	switch count {
+	case 1:
+		for j, s := range sell {
+			if s.Fiat != mainFiat && s.Asset == currentAsset {
+				orders, ok := searchLongChain(buy, removeOrder(sell, j), s, mainFiat, count)
+				if !ok {
+					continue
 				}
+				return append([]p2p.Order(nil), orders...), ok
 			}
-			ok = false
-		case 2:
-			for j, b := range buy {
-				if b.Fiat == currentFiat {
-					orders = append(orders, j)
-					currentAsset = b.Asset
-					buy[j] = p2p.Order{}
-					i++
-					continue Loop
+		}
+	case 2:
+		for j, b := range buy {
+			if b.Fiat == currentFiat {
+				orders, ok := searchLongChain(removeOrder(buy, j), sell, b, mainFiat, count)
+				if !ok {
+					continue
 				}
+				return append([]p2p.Order(nil), orders...), ok
 			}
-			ok = false
-		case 3:
-			for j, s := range sell {
-				if s.Fiat == mainFiat && s.Asset == currentAsset {
-					orders = append(orders, j)
-					sell[j] = p2p.Order{}
+		}
+	case 3:
+		for j, s := range sell {
+			if s.Fiat == mainFiat && s.Asset == currentAsset {
+				orders, ok := searchLongChain(buy, removeOrder(sell, j), s, mainFiat, count)
+				if !ok {
+					continue
+				}
 
-					i++
-					continue Loop
-				}
+				return append([]p2p.Order(nil), orders...), ok
 			}
-			ok = false
 		}
 	}
-	return orders, ok
+
+	return nil, false
+}
+
+func removeOrder(orders []p2p.Order, i int) []p2p.Order {
+	var r []p2p.Order
+	r = append(r, orders[:i]...)
+	return append(r, orders[i+1:]...)
 }
 
 func (t TradeChain) Profit() float64 {
